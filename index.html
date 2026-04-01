@@ -3,167 +3,259 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Groq Direct Access</title>
+    <title>AI Visitenkarten Generator</title>
     <style>
       body {
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 800px;
+        max-width: 1000px;
         margin: 20px auto;
         padding: 20px;
         background: #1a1a1b;
         color: #eee;
       }
-      #chat-box {
-        height: 450px;
-        border: 1px solid #333;
-        overflow-y: auto;
-        padding: 15px;
+      h2 {
+        text-align: center;
+        color: #00a67e;
+      }
+      .container {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .form-section {
+        flex: 1;
+        min-width: 300px;
         background: #272729;
+        padding: 20px;
         border-radius: 10px;
-        margin-bottom: 20px;
+        border: 1px solid #333;
+      }
+      .preview-section {
+        flex: 1;
+        min-width: 400px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .input-group {
+        margin-bottom: 15px;
         display: flex;
         flex-direction: column;
       }
-      .msg {
-        margin-bottom: 12px;
-        padding: 10px 15px;
-        border-radius: 8px;
-        line-height: 1.4;
-        max-width: 85%;
+      label {
+        font-size: 0.9em;
+        margin-bottom: 5px;
+        color: #aaa;
       }
-      .user {
-        background: #0061ff;
-        align-self: flex-end;
-        color: white;
-      }
-      .ai {
-        background: #3e3e40;
-        align-self: flex-start;
-        border: 1px solid #444;
-      }
-      .input-area {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      input[type="text"] {
-        padding: 12px;
+      input[type="text"],
+      input[type="email"],
+      select {
+        padding: 10px;
         border-radius: 5px;
         border: 1px solid #444;
-        background: #272729;
+        background: #1e1e1e;
         color: white;
-      }
-      .btn-row {
-        display: flex;
-        gap: 10px;
+        font-size: 1em;
       }
       button {
-        flex: 1;
-        padding: 12px;
+        width: 100%;
+        padding: 15px;
         background: #00a67e;
         border: none;
         color: white;
+        font-size: 1.1em;
         font-weight: bold;
         cursor: pointer;
         border-radius: 5px;
+        margin-top: 10px;
+        transition: background 0.3s;
+      }
+      button:hover {
+        background: #008a68;
       }
       button:disabled {
         background: #444;
         cursor: not-allowed;
       }
-      #imageInput {
-        color: #aaa;
+      /* Iframe für die Visitenkarte (Format: 85x55mm) */
+      .card-preview-container {
+        width: 85mm;
+        height: 55mm;
+        background: #fff;
+        border: 1px solid #555;
+        border-radius: 5px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        position: relative;
+      }
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+      .loader {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #333;
+        font-weight: bold;
       }
       .status {
         font-size: 0.8em;
         color: #888;
         text-align: center;
-        margin-top: 5px;
+        margin-top: 15px;
+      }
+      #code-output {
+        width: 100%;
+        height: 150px;
+        margin-top: 20px;
+        background: #1e1e1e;
+        color: #00ff00;
+        border: 1px solid #444;
+        padding: 10px;
+        font-family: monospace;
+        border-radius: 5px;
+        display: none;
+        overflow-y: auto;
       }
     </style>
   </head>
   <body>
-    <h2>Groq Direct Interface</h2>
-    <div id="chat-box"></div>
+    <h2>AI Visitenkarten Generator</h2>
 
-    <div class="input-area">
-      <input
-        type="text"
-        id="prompt"
-        placeholder="Schreibe eine Nachricht..."
-        autocomplete="off"
-      />
-      <div class="btn-row">
-        <input
-          type="file"
-          id="imageInput"
-          accept="image/jpeg, image/png, image/webp"
-        />
-        <button id="sendBtn">Anfrage senden</button>
+    <div class="container">
+      <div class="form-section">
+        <div class="input-group">
+          <label for="name">Vollständiger Name</label>
+          <input
+            type="text"
+            id="name"
+            placeholder="z.B. Max Mustermann"
+            value="Max Mustermann"
+          />
+        </div>
+        <div class="input-group">
+          <label for="job">Position / Titel</label>
+          <input
+            type="text"
+            id="job"
+            placeholder="z.B. Senior Web Developer"
+            value="Senior Web Developer"
+          />
+        </div>
+        <div class="input-group">
+          <label for="company">Unternehmen</label>
+          <input
+            type="text"
+            id="company"
+            placeholder="z.B. TechCorp GmbH"
+            value="TechCorp GmbH"
+          />
+        </div>
+        <div class="input-group">
+          <label for="contact">Kontakt (Tel, E-Mail, Web)</label>
+          <input
+            type="text"
+            id="contact"
+            placeholder="max@techcorp.de | +49 123..."
+            value="max@techcorp.de | techcorp.de"
+          />
+        </div>
+        <div class="input-group">
+          <label for="style">Design-Stil & Farben</label>
+          <input
+            type="text"
+            id="style"
+            placeholder="z.B. Minimalistisch, Dark Mode, Neon-Akzente"
+            value="Minimalistisch, Dark Mode mit blauen Akzenten"
+          />
+        </div>
+        <button id="generateBtn">Visitenkarte generieren</button>
+        <div id="status" class="status">Modus: llama-3.1-70b-versatile</div>
       </div>
-      <div id="status" class="status">Modus: Text (Llama 3.3)</div>
+
+      <div class="preview-section">
+        <h3 style="margin-top: 0">Live-Vorschau (85 x 55 mm)</h3>
+        <div class="card-preview-container">
+          <div id="loader" class="loader">Generiere...</div>
+          <iframe
+            id="previewFrame"
+            sandbox="allow-scripts allow-same-origin"
+          ></iframe>
+        </div>
+        <textarea
+          id="code-output"
+          readonly
+          placeholder="HTML Code wird hier angezeigt..."
+        ></textarea>
+      </div>
     </div>
 
     <script>
-      const chatBox = document.getElementById("chat-box");
-      const promptInput = document.getElementById("prompt");
-      const imageInput = document.getElementById("imageInput");
-      const sendBtn = document.getElementById("sendBtn");
+      const generateBtn = document.getElementById("generateBtn");
       const statusText = document.getElementById("status");
+      const previewFrame = document.getElementById("previewFrame");
+      const loader = document.getElementById("loader");
+      const codeOutput = document.getElementById("code-output");
 
-      let history = [];
-
-      // Hilfsfunktion: Bild zu Base64 (ohne Prefix)
-      const toBase64 = (file) =>
-        new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => resolve(reader.result.split(",")[1]);
-          reader.onerror = (error) => reject(error);
-        });
-
-      async function callGroq() {
+      async function generateBusinessCard() {
         const apiKey = localStorage.getItem("vkAI_groq_key");
-        const prompt = promptInput.value.trim();
-        const file = imageInput.files[0];
-
         if (!apiKey) {
           alert("Fehler: Kein 'vkAI_groq_key' im LocalStorage gefunden!");
           return;
         }
 
-        if (!prompt && !file) return;
+        // Formulardaten auslesen
+        const name = document.getElementById("name").value.trim();
+        const job = document.getElementById("job").value.trim();
+        const company = document.getElementById("company").value.trim();
+        const contact = document.getElementById("contact").value.trim();
+        const style = document.getElementById("style").value.trim();
 
-        // UI Sperren & Vorbereiten
-        sendBtn.disabled = true;
-        appendMessage("user", prompt || "[Bild hochgeladen]");
+        if (!name || !job) {
+          alert("Bitte fülle mindestens Name und Position aus.");
+          return;
+        }
 
-        let model = "openai/gpt-oss-safeguard-20b"; // Standard Text-Modell
-        let messages = [
-          { role: "system", content: "Du bist ein hilfreicher Assistent." },
+        // UI vorbereiten
+        generateBtn.disabled = true;
+        generateBtn.innerText = "KI arbeitet...";
+        previewFrame.srcdoc = "";
+        loader.style.display = "block";
+        codeOutput.style.display = "none";
+
+        // Bester Groq-Code-Modell
+        const model = "qwen/qwen3-32b";
+
+        // System Prompt: Zwingt die KI zur reinen HTML-Ausgabe mit spezifischen Anforderungen
+        const systemPrompt = `Du bist ein weltklasse Webdesigner. Deine einzige Aufgabe ist es, eine moderne Visitenkarte als reines HTML zu generieren.
+        WICHTIGE REGELN:
+        1. Die Ausgabe darf AUSSCHLIESSLICH aus gültigem HTML-Code bestehen. Kein Markdown (\`\`\`html), keine Erklärungen davor oder danach!
+        2. Es muss eine einzige, self-contained HTML-Datei sein.
+        3. Importiere Tailwind CSS über CDN: <script src="https://cdn.tailwindcss.com"><\/script>
+        4. Importiere passende Google Fonts.
+        5. Der Haupt-Container MUSS exakt die Maße 85mm (Breite) x 55mm (Höhe) haben (z.B. <div style="width: 85mm; height: 55mm; overflow: hidden; position: relative;" class="...">).
+        6. Nutze modernes, pixelperfektes Design, gute Typografie, Flexbox/Grid für die Ausrichtung.`;
+
+        // User Prompt: Übergibt die Daten
+        const userPrompt = `Bitte erstelle die Visitenkarte mit folgenden Daten:
+        - Name: ${name}
+        - Position: ${job}
+        - Unternehmen: ${company}
+        - Kontaktdaten: ${contact}
+        - Gewünschter Stil/Farben: ${style}
+        
+        Gib jetzt nur den reinen <!DOCTYPE html> Code aus.`;
+
+        const messages = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
         ];
 
         try {
-          if (file) {
-            // Vision-Modell nutzen
-            model = "meta-llama/llama-4-scout-17b-16e-instruct";
-            const base64Image = await toBase64(file);
-            messages.push({
-              role: "user",
-              content: [
-                { type: "text", text: prompt || "Beschreibe dieses Bild." },
-                {
-                  type: "image_url",
-                  image_url: { url: `data:${file.type};base64,${base64Image}` },
-                },
-              ],
-            });
-          } else {
-            // Normaler Chat mit Historie
-            history.forEach((h) => messages.push(h));
-            messages.push({ role: "user", content: prompt });
-          }
-
           const response = await fetch(
             "https://api.groq.com/openai/v1/chat/completions",
             {
@@ -175,8 +267,8 @@
               body: JSON.stringify({
                 model: model,
                 messages: messages,
-                temperature: 0.7,
-                max_tokens: 1024,
+                temperature: 0.4, // Niedrige Temperatur für weniger Halluzinationen bei Code
+                max_tokens: 12000,
               }),
             },
           );
@@ -184,38 +276,51 @@
           const data = await response.json();
 
           if (data.choices && data.choices[0]) {
-            const reply = data.choices[0].message.content;
-            appendMessage("ai", reply);
+            let rawCode = data.choices[0].message.content;
 
-            // Historie nur bei Text-Chats führen
-            if (!file) {
-              history.push({ role: "user", content: prompt });
-              history.push({ role: "assistant", content: reply });
+            // Parsing: Säubern des Outputs (falls die KI doch Markdown-Blöcke sendet)
+            let cleanHtml = rawCode;
+            const htmlMatch = rawCode.match(/```html\s*([\s\S]*?)\s*```/i);
+            if (htmlMatch) {
+              cleanHtml = htmlMatch[1];
+            } else {
+              const fallbackMatch = rawCode.match(/```\s*([\s\S]*?)\s*```/i);
+              if (fallbackMatch) cleanHtml = fallbackMatch[1];
             }
+
+            cleanHtml = cleanHtml.trim();
+
+            // Falls <!DOCTYPE html> fehlt, grob sicherstellen, dass es valide rendert
+            if (
+              !cleanHtml.toLowerCase().startsWith("<!doctype") &&
+              !cleanHtml.toLowerCase().startsWith("<html")
+            ) {
+              console.warn(
+                "KI hat kein volles HTML-Gerüst geliefert, versuche Fallback.",
+              );
+            }
+
+            // Rendern in iFrame
+            previewFrame.srcdoc = cleanHtml;
+
+            // Code anzeigen
+            codeOutput.value = cleanHtml;
+            codeOutput.style.display = "block";
           } else {
-            throw new Error(data.error?.message || "Fehler von Groq erhalten");
+            throw new Error(
+              data.error?.message || "Unbekannter Fehler von der API.",
+            );
           }
         } catch (err) {
-          appendMessage("ai", "Fehler: " + err.message);
+          alert("Fehler beim Generieren: " + err.message);
         } finally {
-          sendBtn.disabled = false;
-          promptInput.value = "";
-          imageInput.value = "";
+          generateBtn.disabled = false;
+          generateBtn.innerText = "Visitenkarte generieren";
+          loader.style.display = "none";
         }
       }
 
-      function appendMessage(role, text) {
-        const div = document.createElement("div");
-        div.className = `msg ${role}`;
-        div.innerText = text;
-        chatBox.appendChild(div);
-        chatBox.scrollTop = chatBox.scrollHeight;
-      }
-
-      sendBtn.onclick = callGroq;
-      promptInput.onkeypress = (e) => {
-        if (e.key === "Enter") callGroq();
-      };
+      generateBtn.onclick = generateBusinessCard;
     </script>
   </body>
 </html>
