@@ -208,7 +208,6 @@
           return;
         }
 
-        // Formulardaten auslesen
         const name = document.getElementById("name").value.trim();
         const job = document.getElementById("job").value.trim();
         const company = document.getElementById("company").value.trim();
@@ -220,40 +219,29 @@
           return;
         }
 
-        // UI vorbereiten
         generateBtn.disabled = true;
         generateBtn.innerText = "KI arbeitet...";
         previewFrame.srcdoc = "";
         loader.style.display = "block";
         codeOutput.style.display = "none";
 
-        // Bester Groq-Code-Modell
-        const model = "qwen/qwen3-32b";
+        // WECHSEL AUF LLAMA 3.3 (Stabilere Limits)
+        const model = "llama-3.3-70b-versatile";
 
-        // System Prompt: Zwingt die KI zur reinen HTML-Ausgabe mit spezifischen Anforderungen
-        const systemPrompt = `Du bist ein weltklasse Webdesigner. Deine einzige Aufgabe ist es, eine moderne Visitenkarte als reines HTML zu generieren.
-        WICHTIGE REGELN:
-        1. Die Ausgabe darf AUSSCHLIESSLICH aus gültigem HTML-Code bestehen. Kein Markdown (\`\`\`html), keine Erklärungen davor oder danach!
-        2. Es muss eine einzige, self-contained HTML-Datei sein.
-        3. Importiere Tailwind CSS über CDN: <script src="https://cdn.tailwindcss.com"><\/script>
-        4. Importiere passende Google Fonts.
-        5. Der Haupt-Container MUSS exakt die Maße 85mm (Breite) x 55mm (Höhe) haben (z.B. <div style="width: 85mm; height: 55mm; overflow: hidden; position: relative;" class="...">).
-        6. Nutze modernes, pixelperfektes Design, gute Typografie, Flexbox/Grid für die Ausrichtung.`;
+        const systemPrompt = `Du bist ein weltklasse Webdesigner. Erstelle eine Visitenkarte als reines HTML.
+        REGELN:
+        1. NUR HTML-Code ausgeben. Kein Markdown, keine Erklärungen.
+        2. Nutze Tailwind CSS (<script src="https://cdn.tailwindcss.com"><\/script>).
+        3. Maß: Exakt 85mm x 55mm (Querformat).
+        4. Design: Modern, professionell, perfekt zentriert.`;
 
-        // User Prompt: Übergibt die Daten
-        const userPrompt = `Bitte erstelle die Visitenkarte mit folgenden Daten:
-        - Name: ${name}
-        - Position: ${job}
-        - Unternehmen: ${company}
-        - Kontaktdaten: ${contact}
-        - Gewünschter Stil/Farben: ${style}
-        
-        Gib jetzt nur den reinen <!DOCTYPE html> Code aus.`;
-
-        const messages = [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ];
+        const userPrompt = `Daten für die Karte:
+        Name: ${name}
+        Job: ${job}
+        Firma: ${company}
+        Kontakt: ${contact}
+        Stil: ${style}
+        Gib NUR den Code ab <!DOCTYPE html> aus.`;
 
         try {
           const response = await fetch(
@@ -266,9 +254,13 @@
               },
               body: JSON.stringify({
                 model: model,
-                messages: messages,
-                temperature: 0.4, // Niedrige Temperatur für weniger Halluzinationen bei Code
-                max_tokens: 12000,
+                messages: [
+                  { role: "system", content: systemPrompt },
+                  { role: "user", content: userPrompt },
+                ],
+                temperature: 0.3,
+                // REDUZIERT AUF 2000, um das TPM-Limit nicht zu sprengen
+                max_tokens: 2000,
               }),
             },
           );
@@ -276,43 +268,19 @@
           const data = await response.json();
 
           if (data.choices && data.choices[0]) {
-            let rawCode = data.choices[0].message.content;
+            let cleanHtml = data.choices[0].message.content.trim();
 
-            // Parsing: Säubern des Outputs (falls die KI doch Markdown-Blöcke sendet)
-            let cleanHtml = rawCode;
-            const htmlMatch = rawCode.match(/```html\s*([\s\S]*?)\s*```/i);
-            if (htmlMatch) {
-              cleanHtml = htmlMatch[1];
-            } else {
-              const fallbackMatch = rawCode.match(/```\s*([\s\S]*?)\s*```/i);
-              if (fallbackMatch) cleanHtml = fallbackMatch[1];
-            }
+            // Falls die KI doch Markdown-Tags nutzt, entfernen:
+            cleanHtml = cleanHtml.replace(/^```html/i, "").replace(/```$/i, "");
 
-            cleanHtml = cleanHtml.trim();
-
-            // Falls <!DOCTYPE html> fehlt, grob sicherstellen, dass es valide rendert
-            if (
-              !cleanHtml.toLowerCase().startsWith("<!doctype") &&
-              !cleanHtml.toLowerCase().startsWith("<html")
-            ) {
-              console.warn(
-                "KI hat kein volles HTML-Gerüst geliefert, versuche Fallback.",
-              );
-            }
-
-            // Rendern in iFrame
             previewFrame.srcdoc = cleanHtml;
-
-            // Code anzeigen
             codeOutput.value = cleanHtml;
             codeOutput.style.display = "block";
           } else {
-            throw new Error(
-              data.error?.message || "Unbekannter Fehler von der API.",
-            );
+            throw new Error(data.error?.message || "API Fehler");
           }
         } catch (err) {
-          alert("Fehler beim Generieren: " + err.message);
+          alert("Fehler: " + err.message);
         } finally {
           generateBtn.disabled = false;
           generateBtn.innerText = "Visitenkarte generieren";
